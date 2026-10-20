@@ -1,0 +1,390 @@
+﻿<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UNDERCURRENT — 暗流，暗彰表面之下的公司關係</title>
+<meta name="description" content="把董監事、經理人攤開在同一張關係圖上：查公司、查人名、查統編，一次看清楚表面之下誰跟誰真正有關係。資料來自政府公開登記。">
+<!-- 連結分享用的預覽卡片。og-image.png 是設計好的靜態縮圖（品牌 + 範例關係圖），
+     不是即時產生的——首頁不像 /graph 分享頁那樣每次內容都不同，用固定圖就夠了。
+     網址一定要用絕對路徑：LINE／Threads／Slack 的爬蟲不見得會把相對路徑正確解析回這個網域。 -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="UNDERCURRENT">
+<meta property="og:title" content="UNDERCURRENT — 暗流，暗彰表面之下的公司關係">
+<meta property="og:description" content="把董監事、經理人攤開在同一張關係圖上：查公司、查人名、查統編，一次看清楚表面之下誰跟誰真正有關係。">
+<meta property="og:image" content="https://undercurrent.kentshen.com/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:url" content="https://undercurrent.kentshen.com/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23050B14'/%3E%3Cg stroke='%233FE8D4' stroke-opacity='.67' stroke-linecap='round' fill='none'%3E%3Cpath d='M13.7 14.56L22.91 7.65M13.7 14.56L24.64 20.9M13.7 14.56L11.97 26.08' stroke-width='1.73'/%3E%3Cpath d='M22.91 7.65L24.64 20.9' stroke-width='1.44'/%3E%3C/g%3E%3Cpath d='M19.46 14.56L16.58 19.55L10.82 19.55L7.94 14.56L10.82 9.57L16.58 9.57Z' fill='%234A360F' stroke='%23E0A548' stroke-width='1.73' stroke-linejoin='round'/%3E%3Ccircle cx='22.91' cy='7.65' r='3.17' fill='%232E7D74' stroke='%233FE8D4' stroke-width='1.58'/%3E%3Ccircle cx='24.64' cy='20.9' r='3.17' fill='%232E7D74' stroke='%233FE8D4' stroke-width='1.58'/%3E%3Ccircle cx='11.97' cy='26.08' r='3.17' fill='%232E7D74' stroke='%233FE8D4' stroke-width='1.58'/%3E%3C/svg%3E">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#050B14" id="themeColorMeta">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="UNDERCURRENT">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.9/standalone/umd/vis-network.min.js"></script>
+<link rel="stylesheet" href="style.css">
+<!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "cef2a87c55694b2b8d94f9f091c66973"}'></script><!-- End Cloudflare Web Analytics -->
+</head>
+<body>
+
+<div class="current-bg"></div>
+<div id="graph"></div>
+
+<!-- 空狀態引導：第一次進站、畫布上還沒有任何節點時顯示。「怎麼用」
+     面板只教手勢，沒給新來的人一個「打了就有東西看」的起點——尤其
+     手機版第一眼就是搜尋框加一片空白，不知道能查什麼。點了範例會
+     直接帶入查詢並觸發搜尋；只要畫布上出現第一個節點就永久隱藏，
+     不需要另外判斷「使用者是不是查過」。 -->
+<div class="empty-state-hint" id="emptyStateHint">
+  <p>還沒有資料可以看——試著查一間公司，看看它的董監事、經理人跟其他公司的關聯：</p>
+  <div class="empty-state-examples">
+    <button type="button" class="empty-state-chip" data-example-type="company" data-example-value="台灣積體電路製造股份有限公司">台灣積體電路製造股份有限公司</button>
+    <button type="button" class="empty-state-chip" data-example-type="company" data-example-value="鴻海精密工業股份有限公司">鴻海精密工業股份有限公司</button>
+  </div>
+</div>
+
+<div class="toolbar">
+  <!-- 產品名稱＋一句話說明，讓從外部（例如 Threads）連進來、完全不
+       認識這個工具的人，一眼就知道這是什麼、不用先摸索介面。之前
+       這句話只寫在 <title> 裡，瀏覽器分頁看得到，畫面上完全看不到。 -->
+  <div class="brand-line"><b>UNDERCURRENT</b>　暗流，暗彰表面之下的公司關係</div>
+  <div class="search-wrapper">
+    <div class="search-box">
+      <select id="searchType" title="切換搜尋依據">
+        <option value="person">姓名</option>
+        <option value="company" selected>公司</option>
+        <option value="ubn">統編</option>
+        <option value="foundation">法人</option>
+      </select>
+      <input id="nameInput" type="text" value="" placeholder="請輸入公司名稱" autocomplete="off">
+      <button id="clearInputBtn" class="clear-input-btn" title="清除" type="button">×</button>
+      <button id="searchBtn">查詢</button>
+    </div>
+    <div class="suggest-list" id="suggestList"></div>
+  </div>
+  <button class="icon-btn" id="restoreHiddenBtn" title="顯示所有手動隱藏的節點">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/>
+      <circle cx="12" cy="12" r="3"/>
+    </svg>
+    <span class="icon-btn-label">顯示</span>
+  </button>
+  <!-- 只看交集：查交叉持股時，畫面上大部分的人只在一間公司任職，是雜訊。
+       打開後只留公司，和同時出現在兩間以上公司的人。純顯示層的濾鏡，關掉就還原。
+       按鈕叫「交集」而不是「互控」：這個濾鏡留下的是「同時出現在兩間公司的人」，
+       一位同時擔任兩家公司獨立董事的人並不代表任何控制關係——寫成「互控」等於替
+       讀者下了一個資料撐不起的結論，而且這個名稱會跟著快照標題進到新聞報導裡。
+       「交集」就是它實際做的事，也剛好是按鈕上那兩個重疊圓圈的意思。 -->
+  <button class="icon-btn" id="crossOnlyBtn" type="button" aria-pressed="false"
+          title="只看交集：只顯示公司，以及同時出現在兩間以上公司的人">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="9" cy="12" r="6"/>
+      <circle cx="15" cy="12" r="6"/>
+    </svg>
+    <span class="icon-btn-label">交集</span>
+  </button>
+  <button class="icon-btn" id="resetBtn" title="清空重來">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 12a9 9 0 1 0 3-6.7"/>
+      <path d="M3 4v5h5"/>
+    </svg>
+    <span class="icon-btn-label">清空</span>
+  </button>
+  <div class="export-wrapper">
+    <!-- 這顆按鈕原本叫「匯出」，裡面其實最重要的是分享／嵌入：下載 PNG/CSV 是
+         附帶功能，分享才是別人會拿去用在報導裡的東西。名稱跟圖示都改成分享，
+         選單順序也把分享放第一個。 -->
+    <button class="icon-btn" id="exportBtn" title="分享這張圖，或下載圖檔與資料">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/>
+        <path d="M8.4 10.7l7.2-4.2"/><path d="M8.4 13.3l7.2 4.2"/>
+      </svg>
+      <span class="icon-btn-label">分享</span>
+    </button>
+    <div class="export-menu" id="exportMenu">
+      <button class="export-menu-item" id="shareGraphBtn">分享／嵌入這張圖</button>
+      <button class="export-menu-item" id="exportPngBtn">下載圖檔（PNG）</button>
+      <button class="export-menu-item" id="exportPngPrintBtn">下載報導版圖檔（白底）</button>
+      <button class="export-menu-item" id="exportCsvBtn">下載資料（CSV）</button>
+    </div>
+  </div>
+    <button class="icon-btn conn-pill local" id="supabaseBtn" title="點擊設定 Supabase 資料庫連線" type="button">
+    <span class="status-dot"></span>
+    <span class="icon-btn-label">Supabase</span>
+  </button>
+  <div class="account-wrapper">
+    <button class="icon-btn" id="accountBtn" title="帳號與設定">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+        <circle cx="12" cy="7" r="4"/>
+      </svg>
+      <span class="icon-btn-label">帳號</span>
+    </button>
+    <div class="export-menu account-menu" id="accountMenu">
+      <div class="account-state" style="border:none;margin:0;">確認登入狀態中…</div>
+    </div>
+  </div>
+</div>
+
+<!-- 進階查詢（司法／環保／其他外部資料）已經併進各個詳細資料面板本身
+     （見 public/app.js 的 externalLookupSectionHtml）：原本獨立的按鈕
+     使用率偏低，很多人根本不知道有這個功能，併進去之後查完一間公司／
+     一個人，同一個畫面就能繼續查裁罰紀錄跟外部資料，不用再點一次。 -->
+<!-- 意見回饋表單。放在帳號選單底下，不做成常駐按鈕——工具列已經因為
+     按鈕太多擠過一次版，而「想回報問題」是低頻但有明確意圖的行為，
+     使用者會自己去選單裡找。 -->
+<div class="adv-panel" id="feedbackPanel">
+  <div class="adv-panel-header">
+    <span>意見回饋</span>
+    <button class="panel-close" id="feedbackCloseBtn" title="關閉" aria-label="關閉">×</button>
+  </div>
+  <form id="feedbackForm" novalidate>
+    <div class="fb-row">
+      <label for="feedbackCategory">類型</label>
+      <select id="feedbackCategory">
+        <option value="bug">回報問題</option>
+        <option value="idea">功能建議</option>
+        <option value="content">資料有誤</option>
+        <option value="other">其他</option>
+      </select>
+    </div>
+    <div class="fb-row">
+      <label for="feedbackMessage">想說的話</label>
+      <textarea id="feedbackMessage" rows="5" maxlength="2000"
+        placeholder="遇到什麼狀況？希望多什麼功能？講得越具體越幫得上忙。"></textarea>
+      <div class="fb-count"><span id="feedbackCount">0</span> / 2000</div>
+    </div>
+    <div class="fb-row">
+      <label for="feedbackContact">聯絡方式<span class="fb-optional">選填</span></label>
+      <input type="text" id="feedbackContact" maxlength="200"
+        placeholder="email 或社群帳號，想收到回覆才需要填">
+    </div>
+    <button type="submit" class="fb-submit" id="feedbackSubmit">送出</button>
+    <div class="fb-note" id="feedbackNote"></div>
+  </form>
+</div>
+
+<div class="adv-panel" id="helpPanel">
+  <div class="adv-panel-header">
+    <span>怎麼用</span>
+    <button class="panel-close" id="helpCloseBtn" title="關閉" aria-label="關閉">×</button>
+  </div>
+  <!-- 內容刻意壓到最短：第一次來的人只需要知道三個手勢就能開始用，
+       其餘的邊用邊發現就好。寫太長沒人看，等於沒寫。 -->
+  <div class="adv-section">
+    <ul class="help-keys">
+      <li><b>單擊</b>節點<span>看詳細資料</span></li>
+      <li><b>雙擊</b>人物<span>展開他的其他公司</span></li>
+      <li><b>右鍵</b>節點<span>從畫面隱藏</span></li>
+    </ul>
+  </div>
+  <div class="adv-section">
+    <div class="help-tip">搜尋框左邊可切換用<b>姓名／公司／統編／法人</b>查。</div>
+    <div class="help-tip">「理事（12 位）」這種節點，單擊會展開完整名單。</div>
+    <div class="help-tip">隱藏錯了？工具列的<b>眼睛圖示</b>一次全部復原。</div>
+    <div class="help-tip">想常常回來查？右上角<b>帳號選單</b>裡有「安裝到裝置」，加入主畫面後像 App 一樣打開。</div>
+  </div>
+</div>
+
+<div class="toast" id="toast">
+  <span class="dot" id="statusDot"></span>
+  <span id="statusText"></span>
+</div>
+
+<aside class="detail-panel" id="sidebar">
+  <button class="close-btn" id="closeSidebar">×</button>
+  <div id="sidebarContent">
+    <div class="placeholder">點擊圖中的節點，這裡會顯示公司基本資料或該人物目前找到的關聯。</div>
+  </div>
+</aside>
+
+<div class="report-modal-overlay" id="reportModal">
+  <div class="report-modal-box">
+    <div class="report-modal-bar">
+      <span class="report-modal-title" id="reportModalTitle">商業模式報告</span>
+      <div class="report-modal-actions">
+        <!-- 預設隱藏；報告成功存進資料庫、拿到 id 之後才由 updateShareButton() 顯示 -->
+        <button class="report-share-btn" id="reportShareBtn" title="複製分享連結" style="display:none;">分享連結</button>
+        <button class="close-btn" id="closeReportModal">×</button>
+      </div>
+    </div>
+    <div class="report-modal-body" id="reportModalBody">
+      <div class="placeholder">生成中，第一次查詢這間公司需要 AI 即時研究，可能要等 30-60 秒…</div>
+    </div>
+  </div>
+</div>
+
+<!-- 「我的報告」：付費使用者回頭檢視過去生成過的報告。
+     報告是一間公司一份、大家共用同一筆資料，所以這份清單來自
+     report_owners 對照表，不是報告表本身。 -->
+<!-- 安裝到裝置：帳號選單裡的常駐入口，不是自動彈出的東西——使用者發現得到，
+     但不會被打斷。Android／桌機 Chrome 有 beforeinstallprompt 可以直接叫出原生
+     安裝對話框；iOS Safari 沒有這個 API，只能顯示手動步驟（分享 → 加入主畫面）。 -->
+<div class="paywall-overlay" id="installModal">
+  <div class="paywall-box" style="max-width:360px;">
+    <button class="close-btn" id="closeInstallModal">×</button>
+    <h3>加入主畫面</h3>
+    <p class="paywall-sub" id="installInstructions">
+      點下方的 <b>分享</b> 圖示（方框加向上箭頭），選單裡選<b>「加入主畫面」</b>，
+      之後就能像 App 一樣從主畫面直接打開，不用每次找瀏覽器分頁。
+    </p>
+  </div>
+</div>
+
+<!-- 分享／嵌入關係圖：把目前畫面存成不會再變動的快照，給記者放進報導。
+     免費，但要登入；建立前必須勾選「已查證」——人物是依姓名歸併的，同名同姓
+     可能是不同的人，放進已刊出的報導之前，這個確認不能省。查證本身是使用者
+     的責任，系統不在這裡擋下用姓名查到的內容，只在圖上確實有這類內容時多提醒一次。 -->
+<div class="paywall-overlay" id="shareGraphModal">
+  <div class="paywall-box share-box">
+    <button class="close-btn" id="closeShareGraph">×</button>
+    <h3>分享／嵌入這張關係圖</h3>
+
+    <div id="shareGraphLogin" hidden>
+      <p class="paywall-sub">建立可以分享的關係圖需要先登入（免費）。登入之後回到這一頁，畫面上的圖會保留。</p>
+      <a class="paywall-cta" id="shareGraphLoginLink" href="/login.html">登入</a>
+    </div>
+
+    <div id="shareGraphForm" hidden>
+      <p class="paywall-sub">會把<b>畫面上看得到的 <span id="shareGraphCount">0</span> 個節點</b>存成快照，建立之後內容不再變動。</p>
+      <p class="share-warn" id="shareGraphNameWarning" hidden></p>
+      <label class="share-label" for="shareGraphTitle">標題（會顯示在圖的下方）</label>
+      <input id="shareGraphTitle" class="share-input" maxlength="80" autocomplete="off">
+      <label class="share-check">
+        <input type="checkbox" id="shareGraphConfirm">
+        <span>我已查證圖中的人物與關係。</span>
+      </label>
+      <button class="paywall-cta share-create" id="shareGraphCreate" type="button" disabled>建立快照</button>
+      <p class="share-terms">建立即表示同意<a href="/embed-terms" target="_blank" rel="noopener">嵌入使用條款</a>。</p>
+    </div>
+
+    <div id="shareGraphResult" hidden>
+      <p class="paywall-sub">快照已建立。之後可以在帳號選單的「我的關係圖」找到它，或撤回。</p>
+      <label class="share-label" for="shareGraphLink">分享連結：貼在文章裡、社群或 LINE</label>
+      <div class="share-copy-row">
+        <input id="shareGraphLink" class="share-input" readonly>
+        <button class="share-copy" type="button" data-copy="shareGraphLink">複製</button>
+      </div>
+      <label class="share-label" for="shareGraphCode">嵌入碼：貼到文章編輯器的「HTML」或「嵌入」區塊</label>
+      <div class="share-copy-row">
+        <textarea id="shareGraphCode" class="share-input share-code" rows="4" readonly></textarea>
+        <button class="share-copy" type="button" data-copy="shareGraphCode">複製</button>
+      </div>
+      <div class="share-options">
+        <label>背景
+          <select id="shareGraphTheme">
+            <option value="light">淺色（大部分新聞網站）</option>
+            <option value="dark">深色</option>
+          </select>
+        </label>
+        <a id="shareGraphPreview" href="#" target="_blank" rel="noopener">預覽嵌入效果 ↗</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="paywall-overlay" id="myGraphsModal">
+  <div class="paywall-box my-reports-box">
+    <button class="close-btn" id="closeMyGraphs">×</button>
+    <h3>我的關係圖</h3>
+    <p class="paywall-sub" id="myGraphsSummary">載入中…</p>
+    <div id="myGraphsList"></div>
+  </div>
+</div>
+
+<div class="paywall-overlay" id="myReportsModal">
+  <div class="paywall-box my-reports-box">
+    <button class="close-btn" id="closeMyReports">×</button>
+    <h3>我的報告</h3>
+    <p class="paywall-sub" id="myReportsSummary">載入中…</p>
+    <div id="myReportsList"></div>
+    <div class="my-reports-pager" id="myReportsPager" hidden></div>
+  </div>
+</div>
+
+<!-- 還沒訂閱的人按下「生成商業模式報告」時看到的說明。內容講的是這份
+     報告實際會產出什麼（對照 worker/index.js 的 BMR_SYSTEM_PROMPT），
+     不誇大成產品做不到的東西。 -->
+<div class="paywall-overlay" id="paywallModal">
+  <div class="paywall-box">
+    <button class="close-btn" id="closePaywall">×</button>
+    <h3>商業模式報告</h3>
+    <p class="paywall-sub">
+      針對 <b id="paywallCompany">這間公司</b>，用 AI 即時查證公開資料與報導，
+      產出一份結構化的分析報告——不是把登記資料換個排版，是回答「這間公司到底靠什麼賺錢」。
+    </p>
+    <ul class="paywall-list">
+      <li>先界定一個具體的核心問題，不是套通用模板</li>
+      <li>拆成子問題、建立假設，再逐一用查到的資料檢驗</li>
+      <li>商業模式全景圖：金流從哪裡進來、又流到哪裡去</li>
+      <li>查得到數字就列營收結構與關鍵指標，查不到會誠實說查不到</li>
+      <li>附上實際查到的資料來源網址，可自行覆核</li>
+    </ul>
+    <a class="paywall-cta" id="paywallCta" href="#">查看訂閱方案 →</a>
+    <!-- 有真實範例報告時，把 app.js 的 SAMPLE_REPORT_ID 填上就會出現這個連結 -->
+    <a class="paywall-sample" id="paywallSample" href="#" style="display:none;">先看一份範例報告 →</a>
+    <p class="paywall-note">
+      報告由 AI 生成，內容僅供參考與初步查證，正確性仍應以原始資料來源為準。
+    </p>
+  </div>
+</div>
+
+<button class="attribution-btn" id="attributionBtn" title="資料來源與授權聲明">©</button>
+
+<div class="modal-overlay" id="attributionModal">
+  <div class="modal-box">
+    <button class="close-btn" id="closeAttributionModal">×</button>
+    <h2>資料來源與授權聲明</h2>
+    <div class="attribution-text">
+      <p>提供機關／經濟部商業發展署——公司登記董監事資料集、公司登記經理人資料集、公司登記基本資料查詢</p>
+      <p>提供機關／司法院——法人登記公告資料集</p>
+      <p>提供機關／環境部——裁罰處分資料</p>
+      <p>以上開放資料均依政府資料開放授權條款 (Open Government Data License) 進行公眾釋出，使用者於遵守本條款各項規定之前提下，得利用之。</p>
+      <p>政府資料開放授權條款：<a href="https://data.gov.tw/license" target="_blank" rel="noopener">http://data.gov.tw/?q=principle</a></p>
+    </div>
+  </div>
+</div>
+
+<script src="track.js"></script>
+<script src="report-template.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-opendata-bridge.js"></script>
+<script src="app.js"></script>
+
+<!-- Supabase BaaS 資料庫與 OpenData 設定視窗 -->
+<div class="modal-overlay" id="supabaseModal" style="display:none;">
+  <div class="modal-box" style="max-width: 520px;">
+    <button class="close-btn" id="closeSupabaseModal" title="關閉">×</button>
+    <h2>⚡ Supabase BaaS ✕ 台灣政府 OpenData 連線設定</h2>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.6;">
+      本平台依據 <b>github-supabase-web</b> 標準打造。配置 Supabase 專案後，系統將直接以雲端 PostgreSQL 索引與 RPC 函數展開公司與人際網絡，並支援一鍵快照儲存與開放資料快取同步。
+    </p>
+    <div class="fb-row">
+      <label for="sbUrlInput">Supabase Project URL</label>
+      <input type="text" id="sbUrlInput" placeholder="https://your-project.supabase.co" style="width:100%;padding:8px 10px;background:var(--paper);border:1px solid var(--line);color:var(--ink);border-radius:6px;font-family:monospace;font-size:12px;">
+    </div>
+    <div class="fb-row" style="margin-top:12px;">
+      <label for="sbKeyInput">Supabase Anon Public Key (公開 Client Key)</label>
+      <input type="password" id="sbKeyInput" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." style="width:100%;padding:8px 10px;background:var(--paper);border:1px solid var(--line);color:var(--ink);border-radius:6px;font-family:monospace;font-size:12px;">
+    </div>
+    <div id="sbTestAlert" style="display:none;margin-top:12px;padding:8px 12px;border-radius:6px;font-size:12px;"></div>
+    <div style="display:flex;gap:8px;margin-top:18px;flex-wrap:wrap;">
+      <button type="button" class="fb-submit" id="sbTestBtn" style="flex:1;background:var(--kraft);color:var(--ink);border:1px solid var(--line);cursor:pointer;">測試連線</button>
+      <button type="button" class="fb-submit" id="sbSaveBtn" style="flex:1;cursor:pointer;">儲存並連線</button>
+      <button type="button" class="fb-submit" id="sbClearBtn" style="background:transparent;color:var(--muted);border:1px solid var(--line);cursor:pointer;">切換為本地示範模式</button>
+    </div>
+    <div style="margin-top:16px;padding-top:12px;border-top:1px dashed var(--line);font-size:12px;color:var(--muted);display:flex;justify-content:space-between;align-items:center;">
+      <span>尚未建立資料表？請在 Supabase 執行 SQL 腳本</span>
+      <a href="https://github.com/davidyeh51/undercurrent-tw-opendata/blob/main/supabase/schema.sql" target="_blank" style="color:var(--current);text-decoration:none;">查看 schema.sql ↗</a>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

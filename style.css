@@ -1,0 +1,945 @@
+﻿  :root{
+    color-scheme:dark;
+    --paper:#050B14;
+    --panel:#0A1622;
+    --panel-tint:#101F2E;
+    --line:#1E3648;
+    --ink:#DCEAF2;
+    --ink-soft:#9FBBCB;
+    /* 原本是 #5C7A8C，對這個主題常見的背景色只有約 4.0~4.3:1 對比，
+       低於 WCAG AA 一般文字要求的 4.5:1（UIUX 顧問審查抓到的，2026-09-27）。
+       這個 token 同時被 .field-label／.director-position／.penalty-meta／
+       .footnote 等一大批「次要但要讀得到」的文字共用，調亮這一個變數
+       比逐一改每個用到它的地方划算。實測（sRGB 相對亮度公式）：
+       對 --panel 約 4.72:1、對 --paper 約 5.10:1，兩邊都過。 */
+    --muted:#6685A0;
+    --kraft:#1C2D3C;
+    --kraft-line:#4A8A93;
+    --stamp:#E0A548;
+    --stamp-deep:#B07E2E;
+    --stamp-soft:#8A6A3A;
+    --danger:#D9534F;
+    --ok:#4FBF8B;
+    --current:#3FE8D4;
+    --current-dim:#1F5F58;
+
+    --panel-glass-rgb:10,22,34;
+    --shadow-rgb:0,0,0;
+    --glow-rgb:63,232,212;
+    --kraft-line-rgb:74,138,147;
+    --current-rgb:63,232,212;
+    --stamp-rgb:224,165,72;
+    --danger-rgb:217,83,79;
+    --ok-rgb:79,191,139;
+
+    --stripe1:rgba(63,232,212,0.028);
+    --stripe2:rgba(63,232,212,0.018);
+    --stripe3:rgba(224,165,72,0.012);
+    --dot-color:rgba(63,232,212,0.05);
+    --vignette-mid:rgba(63,232,212,0.028);
+    --vignette-fade:rgba(5,11,20,0);
+    --vignette-edge:rgba(2,5,9,0.75);
+  }
+  [data-theme="light"]{
+    color-scheme:light;
+    --paper:#F3FAF9;
+    --panel:#FFFFFF;
+    --panel-tint:#E8F3F1;
+    --line:#D3E6E3;
+    --ink:#10262B;
+    --ink-soft:#3E5C60;
+    /* 同樣的對比度問題，亮色主題更嚴重：原本 #7B928F 對白色背景只有
+       約 3.3:1。實測（sRGB 相對亮度公式）：對白色約 5.34:1、對
+       --paper（#F3FAF9）約 5.05:1，兩邊都過 4.5:1。 */
+    --muted:#56706C;
+    --kraft:#F2E8D0;
+    --kraft-line:#A9824A;
+    --stamp:#C9822E;
+    --stamp-deep:#9C6520;
+    --stamp-soft:#E3B57A;
+    --danger:#C23B32;
+    --ok:#2E8F63;
+    --current:#0E8C82;
+    --current-dim:#BFE3E0;
+
+    --panel-glass-rgb:255,255,255;
+    --shadow-rgb:80,110,105;
+    --glow-rgb:14,140,130;
+    --kraft-line-rgb:169,130,74;
+    --current-rgb:14,140,130;
+    --stamp-rgb:201,130,46;
+    --danger-rgb:194,59,50;
+    --ok-rgb:46,143,99;
+
+    --stripe1:rgba(14,140,130,0.030);
+    --stripe2:rgba(14,140,130,0.020);
+    --stripe3:rgba(201,130,46,0.016);
+    --dot-color:rgba(14,140,130,0.055);
+    --vignette-mid:rgba(14,140,130,0.030);
+    --vignette-fade:rgba(243,250,249,0);
+    --vignette-edge:rgba(200,225,222,0.65);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;background:var(--paper);color:var(--ink);
+    font-family:'Inter',sans-serif;overflow:hidden;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  .display{font-family:'Space Grotesk',sans-serif;}
+
+  .current-bg{
+    position:fixed;inset:0;z-index:0;
+    background-color:var(--paper);
+    overflow:hidden;
+    pointer-events:none;
+  }
+  .current-bg::before{
+    content:'';
+    position:absolute;
+    top:-25%;left:-25%;width:150%;height:150%;
+    background-image:
+      repeating-linear-gradient(100deg, var(--stripe1) 0px, var(--stripe1) 2px, transparent 2px, transparent 140px),
+      repeating-linear-gradient(75deg, var(--stripe2) 0px, var(--stripe2) 3px, transparent 3px, transparent 220px),
+      repeating-linear-gradient(118deg, var(--stripe3) 0px, var(--stripe3) 2px, transparent 2px, transparent 300px);
+    will-change:transform;
+    /* 140 秒不是為了省效能，是為了讓它不搶眼：會動的東西在周邊視野裡
+       比同樣對比的靜態紋理更容易被注意到，所以把線條調淡之後，飄移
+       速度也要一起放慢，否則使用者的眼睛還是會被拉過去。 */
+    animation:currentDrift 140s linear infinite;
+  }
+  .current-bg::after{
+    content:'';
+    position:absolute;inset:0;
+    background-image:
+      radial-gradient(circle at 1px 1px, var(--dot-color) 1.3px, transparent 0),
+      radial-gradient(ellipse 75% 60% at 50% 38%, var(--vignette-mid) 0%, var(--vignette-fade) 45%, var(--vignette-edge) 100%);
+    background-size: 26px 26px, 100% 100%;
+  }
+  @keyframes currentDrift{
+    0%{ transform:translate3d(0,0,0); }
+    100%{ transform:translate3d(420px, 240px, 0); }
+  }
+  /* 有些人對背景的持續移動特別敏感（會頭暈）。系統層級已經表示不要
+     動畫的話，這裡就完全靜止，紋理本身還在。 */
+  @media (prefers-reduced-motion: reduce){
+    .current-bg::before{ animation:none; }
+  }
+
+  #graph{
+    position:fixed;inset:0;z-index:1;
+    background:transparent;
+  }
+
+  /* ---------- floating toolbar ---------- */
+  .toolbar{
+    position:fixed;top:20px;left:20px;z-index:20;
+    display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+    background:rgba(var(--panel-glass-rgb),0.72);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:8px;
+    backdrop-filter:blur(14px);
+    -webkit-backdrop-filter:blur(14px);
+    box-shadow:0 12px 32px rgba(var(--shadow-rgb),0.4), 0 0 24px rgba(var(--glow-rgb),0.05);
+  }
+  /* flex-basis:100% 讓這行永遠自己獨占一整列——不用另外算寬度，
+     搜尋框跟按鈕那排照樣在下一列正常排列，桌機、手機都適用。 */
+  .brand-line{
+    flex:1 1 100%;
+    padding:2px 4px 6px;
+    font-family:'Inter',sans-serif;font-size:11px;letter-spacing:0.01em;
+    color:var(--ink-soft);white-space:nowrap;
+  }
+  .brand-line b{
+    font-family:'Space Grotesk',sans-serif;font-size:12px;
+    color:var(--current);letter-spacing:0.04em;font-weight:600;
+  }
+
+  .search-wrapper{position:relative;flex:1;}
+  .search-box{display:flex;align-items:stretch;border-radius:9px;overflow:hidden;background:var(--panel-tint);border:1px solid var(--line);}
+
+  .suggest-list{
+    position:absolute;top:calc(100% + 8px);left:0;right:0;
+    background:rgba(var(--panel-glass-rgb),0.97);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:4px;
+    display:none;
+    flex-direction:column;
+    max-height:260px;overflow-y:auto;
+    box-shadow:0 12px 28px rgba(var(--shadow-rgb),0.35);
+    backdrop-filter:blur(14px);
+    -webkit-backdrop-filter:blur(14px);
+    z-index:21;
+  }
+  .suggest-list.open{display:flex;}
+  .suggest-item{
+    padding:9px 12px;border-radius:7px;cursor:pointer;
+    font-size:13px;color:var(--ink);font-family:'Inter',sans-serif;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .suggest-item:hover, .suggest-item.active{background:var(--panel-tint);color:var(--current);}
+  /* appearance:none 拿掉了瀏覽器原生的下拉箭頭——是刻意的（原生箭頭
+     樣式各瀏覽器不一致、跟整體風格也不搭），但拿掉之後完全沒有補畫
+     一個回去，看起來就只是一段純文字，不熟悉的使用者很可能不知道
+     這裡點下去可以切換姓名／公司／統編／法人。用 background-image
+     疊一個小箭頭圖示，右邊留出對應的 padding 避免文字被蓋到。 */
+  .search-box select{
+    background:transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6' stroke='%237B928F' stroke-width='2.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 6px center;
+    background-size:11px;
+    border:none;outline:none;color:var(--ink);
+    padding:0 22px 0 8px;font-size:13px;font-family:'Inter',sans-serif;
+    border-right:1px solid var(--line);cursor:pointer;
+    -webkit-appearance:none;appearance:none;
+    color-scheme:inherit;
+  }
+  .search-box select option{
+    background:var(--panel);color:var(--ink);
+  }
+  /* .search-wrapper 是 flex:1，會把工具列裡剩下的空間都吃下來，但
+     這個 input 之前是寫死 width:200px——輸入框不會跟著長寬，容器（連著
+     它自己的背景色跟圓角）卻還是撐好撐滿，結果視窗夠寬時，查詢按鈕
+     後面會多出一大塊「看起來像輸入框、其實是空的背景」，點了完全沒
+     反應。改成 flex:1 讓輸入框自己跟著容器一起長大，就不會有這塊空
+     著沒用的區域，順便讓寬螢幕打長一點的公司名稱更好打。 */
+  .search-box input{
+    background:transparent;border:none;outline:none;color:var(--ink);
+    padding:0 12px;font-size:14px;flex:1;min-width:100px;height:40px;font-family:'Inter',sans-serif;
+  }
+  .search-box input::placeholder{color:var(--muted);}
+  .search-box button{
+    border:none;cursor:pointer;padding:0 18px;
+    background:var(--stamp);color:#1C1305;font-weight:600;font-size:13px;
+    font-family:'Space Grotesk',sans-serif;
+    transition:filter .15s ease;
+  }
+  .search-box button:hover{filter:brightness(1.1);}
+  .search-box .clear-input-btn{
+    background:transparent;color:var(--muted);
+    padding:0 10px;font-size:16px;font-weight:400;
+    font-family:'Inter',sans-serif;
+    display:none;
+  }
+  .search-box .clear-input-btn:hover{filter:none;color:var(--danger);}
+  .search-box .clear-input-btn.show{display:block;}
+
+  /* 原本只有圖示、靠 title 顯示文字說明——但 title 要滑鼠停留才會
+     跳出來，手機根本沒有這個手勢，等於這幾顆按鈕對手機使用者是啞的。
+     改成圖示＋常駐顯示的短文字，第一次來的人不用先 hover 過一輪
+     才知道每顆按鈕是做什麼；title 保留給桌機使用者當作更完整的說明。 */
+  .icon-btn{
+    width:44px;min-height:40px;border-radius:9px;
+    border:1px solid var(--line);background:var(--panel-tint);
+    color:var(--muted);cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:2px;padding:5px 2px 4px;
+    flex-shrink:0;transition:color .15s ease, border-color .15s ease;
+  }
+  .icon-btn:hover{color:var(--current);border-color:var(--current-dim);}
+  .icon-btn.active{color:var(--current);border-color:var(--current);}
+
+  /* 查完公司／統編／法人之後，「分享」按鈕會亮幾秒——不然沒有人知道有分享這個功能。
+     使用者打開過一次選單就不再閃（記在 localStorage）。
+     顏色刻意用印章的琥珀色，不用介面主色：主色（青色）就是所有按鈕 hover 跟
+     「啟用中」的顏色，拿同一個顏色當提示等於沒提示。琥珀色在工具列只有這裡會出現，
+     掃一眼就看得到。除了脈動的光暈，外框、文字、底色也一起換色——動畫可能被系統
+     設定關掉、或使用者剛好在看別的地方，靜態的顏色變化才是保底。 */
+  @keyframes share-hint-pulse{
+    0%{box-shadow:0 0 0 0 rgba(var(--stamp-rgb),0.55);}
+    70%{box-shadow:0 0 0 9px rgba(var(--stamp-rgb),0);}
+    100%{box-shadow:0 0 0 0 rgba(var(--stamp-rgb),0);}
+  }
+  .icon-btn.share-hint{
+    color:var(--stamp);
+    border-color:var(--stamp);
+    background:rgba(var(--stamp-rgb),0.16);
+    animation:share-hint-pulse 1.5s ease-out 5;
+  }
+  .icon-btn.share-hint:hover{color:var(--stamp);border-color:var(--stamp);}
+  @media (prefers-reduced-motion: reduce){
+    .icon-btn.share-hint{animation:none;box-shadow:0 0 0 4px rgba(var(--stamp-rgb),0.30);}
+  }
+  /* 這是觸控裝置上唯一讀得到「這顆按鈕是做什麼」的文字——title 提示
+     在觸控裝置上不會出現。原本 9.5px 偏小，拉到 10.5px。 */
+  .icon-btn-label{
+    font-family:'Inter',sans-serif;font-size:10.5px;line-height:1;
+    letter-spacing:0.02em;
+  }
+
+  .export-wrapper{position:relative;}
+  .export-menu{
+    position:absolute;top:calc(100% + 8px);left:0;
+    min-width:150px;
+    background:rgba(var(--panel-glass-rgb),0.95);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:6px;
+    display:none;
+    flex-direction:column;
+    gap:2px;
+    box-shadow:0 12px 28px rgba(var(--shadow-rgb),0.35);
+    backdrop-filter:blur(14px);
+    -webkit-backdrop-filter:blur(14px);
+    z-index:21;
+  }
+  .export-menu.open{display:flex;}
+  .export-menu-item{
+    background:transparent;border:none;text-align:left;
+    padding:8px 10px;border-radius:7px;cursor:pointer;
+    font-size:12px;color:var(--ink);font-family:'Inter',sans-serif;
+  }
+  .export-menu-item:hover{background:var(--panel-tint);color:var(--current);}
+  @media (max-width:640px){
+    .export-menu{left:auto;right:0;}
+  }
+  .icon-btn svg{width:16px;height:16px;}
+
+  /* ---------- 帳號選單（沿用 export-menu 的下拉樣式） ---------- */
+  /* 帳號鈕和其他工具鈕是不同性質的東西：那些是「對這張圖做什麼」，
+     這個是「你是誰」。混在一排同樣的灰色方鈕裡完全找不到，所以用
+     形狀（圓形＝頭像）和顏色（金色，跳脫既有的青綠／灰系）雙重區隔。
+     兩個主題的 --stamp 都有足夠對比，不需要各寫一份。 */
+  .account-wrapper{position:relative;display:flex;align-items:center;gap:10px;}
+  /* 一條分隔線，把「帳號」和左邊的工具群組分開 */
+  .account-wrapper::before{
+    content:'';width:1px;height:20px;background:var(--line);flex:none;
+  }
+  .account-menu{min-width:220px;left:auto;right:0;}
+  .account-email{
+    padding:8px 10px 4px;font-size:12px;color:var(--ink);
+    font-weight:600;word-break:break-all;
+  }
+  .account-state{
+    padding:0 10px 8px;font-size:11px;color:var(--ink-soft);line-height:1.5;
+    border-bottom:1px solid var(--line);margin-bottom:6px;
+  }
+  .account-state.paid{color:var(--current);}
+  /* 權限狀態是兩行（功能名稱／次數與到期日），要靠層次分出主次，否則
+     兩行同樣灰、同樣大小，等於什麼都沒強調。標題吃 .paid 的主色，
+     細節維持弱化色。 */
+  .account-state .state-head{font-weight:600;letter-spacing:.02em;}
+  .account-state .state-line{color:var(--ink-soft);opacity:.85;margin-top:1px;}
+
+  /* 未登入：金色外框 + 金色圖示。在一排灰鈕裡明顯，但不到刺眼。
+     半徑原本用 50%，是在這顆鈕還是固定 40x40 正方形時算出來的完美
+     圓形；加了文字標籤之後改成圖示+文字上下疊，鈕變成比較高的長
+     方形，50% 就不再是圓形而是橢圓——在一排方角鈕裡看起來像多出來
+     一顆凸出的膠囊，改成固定像素值，跟鈕的長寬比無關，維持圓角矩形
+     不會再跑出橢圓形。 */
+  #accountBtn{
+    border-radius:16px;
+    color:var(--stamp);
+    border-color:var(--stamp-soft);
+    background:rgba(var(--stamp-rgb),0.10);
+  }
+  #accountBtn:hover{
+    color:var(--stamp);
+    border-color:var(--stamp);
+    background:rgba(var(--stamp-rgb),0.20);
+  }
+  /* 已登入：整顆填滿，不用點開選單就知道自己登入了。
+     圖示用 --paper（背景色）而不是寫死白或黑，亮暗兩色都能維持對比 */
+  #accountBtn.signed-in{
+    color:var(--paper);
+    background:var(--current);
+    border-color:var(--current);
+  }
+  #accountBtn.signed-in:hover{
+    color:var(--paper);
+    background:var(--current);
+    border-color:var(--current);
+    filter:brightness(1.12);
+  }
+
+  /* ---------- empty-state 引導（畫布上還沒有節點時顯示） ---------- */
+  .empty-state-hint{
+    position:fixed;top:var(--panel-top, 78px);left:50%;z-index:5;
+    transform:translateX(-50%);
+    width:420px;max-width:calc(100vw - 40px);
+    background:rgba(var(--panel-glass-rgb),0.72);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:16px 18px;
+    text-align:center;
+    pointer-events:none; /* 容器本身不擋任何滑鼠事件，只有下面的按鈕要能點 */
+  }
+  .empty-state-hint[hidden]{display:none;}
+  .empty-state-hint p{
+    margin:0 0 12px;font-size:12.5px;line-height:1.7;color:var(--ink-soft);
+  }
+  .empty-state-examples{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;}
+  .empty-state-chip{
+    pointer-events:auto;
+    font-family:'Inter',sans-serif;font-size:12px;color:var(--current);
+    background:var(--panel-tint);border:1px solid var(--current-dim);border-radius:999px;
+    padding:6px 14px;cursor:pointer;
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .empty-state-chip:hover{border-color:var(--current);background:var(--panel);}
+  @media (max-width:640px){
+    .empty-state-hint{width:calc(100vw - 40px);}
+  }
+
+  /* ---------- advanced query panel (below toolbar) ---------- */
+  .adv-panel{
+    /* 位置跟著工具列的實際底邊走，不寫死。
+
+       原本桌機寫 78px、手機寫 132px，都是照「工具列會有幾列」算出來的
+       常數——每次工具列多一顆按鈕、或使用者的視窗寬度剛好讓按鈕多擠一列，
+       面板就會蓋住工具列。--panel-top 由 app.js 用 ResizeObserver 量出來，
+       之後再加按鈕也不會再壞一次。 */
+    position:fixed;top:var(--panel-top, 78px);left:20px;z-index:19;
+    width:320px;max-width:calc(100vw - 40px);
+    background:rgba(var(--panel-glass-rgb),0.88);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:18px;
+    max-height:min(70vh, 560px);
+    overflow-y:auto;
+    backdrop-filter:blur(16px);
+    -webkit-backdrop-filter:blur(16px);
+    box-shadow:0 16px 40px rgba(var(--shadow-rgb),0.45), 0 0 30px rgba(var(--glow-rgb),0.04);
+    display:none;
+  }
+  .adv-panel.open{display:block;}
+  /* 面板的關閉鈕。說明面板的觸發點移進帳號選單之後，沒有這顆就關不掉了 */
+  .panel-close{
+    background:none;border:none;padding:0 2px;cursor:pointer;
+    color:var(--muted);font-size:20px;line-height:1;
+  }
+  .panel-close:hover{color:var(--ink);}
+
+  /* 三個核心手勢排成兩欄，掃一眼就看完 */
+  .help-keys{list-style:none;margin:0;padding:0;}
+  .help-keys li{
+    display:flex;align-items:baseline;gap:10px;
+    padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;
+  }
+  .help-keys li:last-child{border-bottom:0;}
+  .help-keys b{
+    flex:none;min-width:34px;color:var(--current);font-weight:600;
+  }
+  .help-keys span{margin-left:auto;color:var(--ink-soft);text-align:right;}
+
+  .adv-panel-header{
+    display:flex;justify-content:space-between;align-items:center;gap:8px;
+    font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:14px;
+    margin-bottom:14px;
+  }
+  .adv-section{margin-top:14px;border-top:1px solid var(--line);padding-top:14px;}
+  .adv-section:first-of-type{margin-top:0;border-top:none;padding-top:0;}
+
+  /* ---------- 意見回饋表單 ---------- */
+  .fb-row{margin-bottom:14px;}
+  .fb-row label{
+    display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--muted);margin-bottom:6px;
+  }
+  .fb-optional{
+    text-transform:none;letter-spacing:0;margin-left:6px;
+    color:var(--ink-soft);opacity:.8;
+  }
+  .fb-row select,
+  .fb-row textarea,
+  .fb-row input[type=text]{
+    width:100%;box-sizing:border-box;
+    background:var(--paper);color:var(--ink);
+    border:1px solid var(--line);border-radius:8px;
+    padding:8px 10px;font:inherit;font-size:13px;line-height:1.6;
+    outline:none;
+  }
+  .fb-row textarea{resize:vertical;min-height:88px;}
+  .fb-row select:focus,
+  .fb-row textarea:focus,
+  .fb-row input[type=text]:focus{border-color:var(--current);}
+  /* 字數只在快滿的時候才變色。一直亮著等於一直在催人，反而讓人少寫。 */
+  .fb-count{text-align:right;font-size:11px;color:var(--ink-soft);margin-top:4px;}
+  .fb-count.near{color:var(--stamp);}
+  .fb-submit{
+    width:100%;padding:9px;border-radius:8px;cursor:pointer;
+    border:1px solid var(--current);background:var(--current);
+    color:var(--paper);font:inherit;font-size:13px;font-weight:600;
+  }
+  .fb-submit:hover{opacity:.88;}
+  .fb-submit:disabled{opacity:.5;cursor:default;}
+  .fb-note{font-size:11.5px;line-height:1.6;color:var(--ink-soft);margin-top:10px;}
+  .fb-note.bad{color:var(--stamp);}
+  .fb-note.good{color:var(--current);}
+
+  /* ---------- toast ---------- */
+  .toast{
+    position:fixed;left:20px;bottom:20px;z-index:20;
+    max-width:calc(100vw - 40px);
+    display:flex;align-items:center;gap:9px;
+    background:rgba(var(--panel-glass-rgb),0.85);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:9px 14px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;color:var(--muted);
+    backdrop-filter:blur(14px);
+    -webkit-backdrop-filter:blur(14px);
+    box-shadow:0 8px 24px rgba(var(--shadow-rgb),0.35);
+    opacity:0;transform:translateY(6px);
+    pointer-events:none;
+    transition:opacity .2s ease, transform .2s ease;
+  }
+  .toast.show{opacity:1;transform:translateY(0);}
+  .toast .dot{width:7px;height:7px;border-radius:50%;background:var(--muted);flex-shrink:0;}
+  .toast .dot.ok{background:var(--ok);box-shadow:0 0 8px rgba(var(--ok-rgb),0.6);}
+  .toast .dot.err{background:var(--danger);box-shadow:0 0 8px rgba(var(--danger-rgb),0.6);}
+  .toast .dot.loading{background:var(--stamp);animation:pulse 1s infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+
+  /* ---------- detail panel (slide in) ---------- */
+  .detail-panel{
+    position:fixed;top:20px;right:20px;bottom:20px;z-index:20;
+    width:360px;max-width:calc(100vw - 40px);
+    background:rgba(var(--panel-glass-rgb),0.9);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:22px;
+    overflow-y:auto;
+    backdrop-filter:blur(16px);
+    -webkit-backdrop-filter:blur(16px);
+    box-shadow:0 20px 50px rgba(var(--shadow-rgb),0.5), 0 0 40px rgba(var(--glow-rgb),0.04);
+    transform:translateX(calc(100% + 40px));
+    transition:transform .28s cubic-bezier(.2,.8,.2,1);
+  }
+  .detail-panel.open{transform:translateX(0);}
+
+  .close-btn{
+    position:absolute;top:14px;right:14px;
+    width:26px;height:26px;border-radius:7px;
+    border:1px solid var(--line);background:var(--panel-tint);
+    color:var(--muted);cursor:pointer;font-size:15px;line-height:1;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .close-btn:hover{color:var(--current);}
+
+  /* ---------- 顯名聲明按鈕 + 彈跳視窗 ---------- */
+  .attribution-btn{
+    position:fixed;bottom:20px;right:20px;z-index:25;
+    width:34px;height:34px;border-radius:50%;
+    background:rgba(var(--panel-glass-rgb),0.85);
+    border:1px solid var(--line);
+    color:var(--muted);
+    font-size:15px;font-family:'IBM Plex Mono',monospace;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+    backdrop-filter:blur(14px);
+    -webkit-backdrop-filter:blur(14px);
+    box-shadow:0 8px 20px rgba(var(--shadow-rgb),0.3);
+    transition:color .15s ease, border-color .15s ease;
+  }
+  .attribution-btn:hover{color:var(--current);border-color:var(--current-dim);}
+
+  .modal-overlay{
+    position:fixed;inset:0;z-index:100;
+    background:rgba(var(--shadow-rgb),0.55);
+    display:none;
+    align-items:center;justify-content:center;
+    padding:20px;
+  }
+  .modal-overlay.open{display:flex;}
+  .modal-box{
+    position:relative;
+    max-width:420px;width:100%;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:26px;
+    box-shadow:0 24px 60px rgba(var(--shadow-rgb),0.4);
+  }
+  .modal-box h2{
+    font-family:'Space Grotesk',sans-serif;font-size:16px;margin:0 0 14px;padding-right:24px;
+  }
+  .attribution-text p{
+    font-size:12px;color:var(--ink-soft);line-height:1.8;margin:0 0 10px;
+  }
+  .attribution-text p:last-child{margin-bottom:0;}
+  .attribution-text a{color:var(--current);}
+  @media (max-width:640px){
+    .attribution-btn{bottom:12px;right:12px;}
+  }
+
+  .report-modal-overlay{
+    position:fixed;inset:0;z-index:110;
+    background:rgba(var(--shadow-rgb),0.6);
+    display:none;align-items:center;justify-content:center;
+    padding:24px;
+  }
+  .report-modal-overlay.open{display:flex;}
+  /* 1240 而不是原本的 960：報告裡的目錄要在 iframe 寬度 ≥ 1120px 時才會
+     放在右側（640 正文 + 間距 + 目錄），960 的視窗永遠只能退成右下角的小
+     按鈕。放寬之後正文欄寬不變（還是 640），多出來的只是兩側的空間，
+     13 吋以上的筆電就看得到側邊目錄，全景圖也有更多地方往外撐。 */
+  .report-modal-box{
+    width:100%;max-width:1240px;height:100%;max-height:calc(100vh - 48px);
+    background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    box-shadow:0 24px 60px rgba(var(--shadow-rgb),0.45);
+    display:flex;flex-direction:column;overflow:hidden;
+  }
+  .report-modal-bar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:12px 16px;border-bottom:1px solid var(--line);flex-shrink:0;
+  }
+  .report-modal-title{font-family:'Space Grotesk',sans-serif;font-size:14px;color:var(--ink);}
+  .report-modal-actions{display:flex;align-items:center;gap:10px;}
+  .report-share-btn{
+    font-family:'IBM Plex Mono',monospace;font-size:12px;padding:6px 14px;
+    border-radius:100px;border:1px solid var(--line);background:var(--panel-tint);
+    color:var(--ink-soft);cursor:pointer;transition:border-color .15s ease,color .15s ease;
+  }
+  .report-share-btn:hover{border-color:var(--current);color:var(--current);}
+  .report-modal-actions .close-btn{position:static;}
+  .report-modal-body{flex:1;overflow:hidden;position:relative;}
+  .report-modal-body iframe{border:0;width:100%;height:100%;display:block;}
+  .report-modal-body .placeholder{padding:40px 24px;}
+  @media (max-width:640px){
+    .report-modal-overlay{padding:0;}
+    .report-modal-box{max-width:none;max-height:none;border-radius:0;}
+  }
+
+  /* ---------- 商業模式報告的付費說明視窗 ---------- */
+  /* 沒有訂閱的人按下報告按鈕時看到的東西。目的是讓「這個功能存在、
+     它會產出什麼」變得具體——之前這些人連按鈕都看不到，等於從來沒
+     機會知道要不要為它付錢。 */
+  .paywall-overlay{
+    position:fixed;inset:0;z-index:120;
+    background:rgba(var(--shadow-rgb),0.62);
+    display:none;align-items:center;justify-content:center;padding:20px;
+    backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);
+  }
+  .paywall-overlay.open{display:flex;}
+  .paywall-box{
+    width:100%;max-width:420px;max-height:calc(100vh - 40px);overflow-y:auto;
+    background:var(--panel);border:1px solid var(--line);border-radius:16px;
+    padding:24px;box-shadow:0 24px 60px rgba(var(--shadow-rgb),0.45);
+    position:relative;
+  }
+  .paywall-box h3{
+    font-family:'Space Grotesk',sans-serif;font-size:17px;color:var(--ink);
+    margin:0 0 6px;padding-right:28px;
+  }
+  .paywall-sub{font-size:12.5px;color:var(--ink-soft);line-height:1.7;margin:0 0 16px;}
+  .paywall-sub b{color:var(--current);}
+  .paywall-list{list-style:none;margin:0 0 18px;padding:0;}
+  .paywall-list li{
+    font-size:12.5px;color:var(--ink);line-height:1.6;
+    padding:7px 0 7px 20px;position:relative;border-bottom:1px dashed var(--line);
+  }
+  .paywall-list li:last-child{border-bottom:none;}
+  .paywall-list li::before{
+    content:'';position:absolute;left:4px;top:13px;
+    width:6px;height:6px;border-radius:50%;background:var(--current);
+  }
+  .paywall-cta{
+    display:block;width:100%;box-sizing:border-box;text-align:center;
+    padding:11px;border-radius:10px;text-decoration:none;
+    background:var(--stamp);color:#1C1305;font-weight:600;font-size:14px;
+    font-family:'Inter',sans-serif;
+    transition:filter .15s ease;
+  }
+  .paywall-cta:hover{filter:brightness(1.08);}
+  .paywall-sample{
+    display:block;text-align:center;margin-top:10px;
+    font-size:12px;color:var(--current);text-decoration:none;
+  }
+  .paywall-sample:hover{text-decoration:underline;}
+  .paywall-note{font-size:11px;color:var(--muted);line-height:1.6;margin:14px 0 0;}
+
+  /* ---------- 我的報告清單 ---------- */
+  /* 大客戶可能有幾十份報告，所以清單本身要能捲動，而不是把整個視窗撐長。 */
+  .my-reports-box{max-width:520px;}
+  #myReportsList{max-height:min(52vh,420px);overflow-y:auto;margin:0 -4px;}
+  .my-report-item{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    width:100%;box-sizing:border-box;text-align:left;
+    padding:10px 8px;border:none;border-bottom:1px solid var(--line);
+    background:transparent;cursor:pointer;
+    font-family:'Inter',sans-serif;
+    transition:background .12s ease;
+  }
+  .my-report-item:last-child{border-bottom:none;}
+  .my-report-item:hover{background:var(--panel-tint);}
+  .my-report-name{font-size:13px;color:var(--ink);line-height:1.5;}
+  .my-report-date{
+    font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0;
+    font-family:'IBM Plex Mono',monospace;
+  }
+  /* 非本月的報告：用琥珀色標出來。投資人最怕的是拿到上一季的內容卻不知道。 */
+  .my-report-date.stale{color:var(--stamp);}
+  .my-reports-empty{font-size:12.5px;color:var(--muted);line-height:1.7;padding:6px 4px;}
+  /* 超過一頁時才出現；按鈕沿用「複製連結」那一組的樣式，頁碼用等寬字避免換頁時左右跳動 */
+  .my-reports-pager{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:14px;}
+  .my-reports-pager[hidden]{display:none;}
+  .my-reports-pager .pager-info{font-size:12px;color:var(--ink-soft);font-family:'IBM Plex Mono',monospace;min-width:86px;text-align:center;}
+
+  /* ---------- 分享／嵌入關係圖 ---------- */
+  .share-box{max-width:520px;}
+  .share-label{display:block;font-size:12px;font-weight:600;color:var(--ink);margin:14px 0 6px;}
+  .share-input{
+    width:100%;box-sizing:border-box;font:inherit;font-size:13px;color:var(--ink);
+    background:var(--panel-tint);border:1px solid var(--line);border-radius:8px;padding:8px 10px;
+  }
+  .share-input:focus{outline:none;border-color:var(--current);}
+  /* 嵌入碼用等寬字：這是給人複製的程式碼，看得出哪裡斷行、有沒有複製完整 */
+  .share-code{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11.5px;line-height:1.5;resize:none;}
+  .share-copy-row{display:flex;gap:8px;align-items:flex-start;}
+  .share-copy-row .share-input{flex:1;min-width:0;}
+  .share-copy{
+    flex:none;font:inherit;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;
+    color:var(--current);background:transparent;border:1px solid var(--current);border-radius:8px;padding:7px 12px;
+  }
+  .share-copy:hover{background:rgba(var(--current-rgb),0.1);}
+  .share-copy.danger{color:var(--danger);border-color:rgba(var(--danger-rgb),0.6);}
+  .share-copy.danger:hover{background:rgba(var(--danger-rgb),0.1);}
+  .share-copy:disabled{opacity:.5;cursor:default;}
+  /* 「已查證」勾選框：放進報導前的最後一道確認，字要看得清楚，不能縮成小字 */
+  .share-check{
+    display:flex;gap:8px;align-items:flex-start;margin:16px 0;
+    font-size:12.5px;line-height:1.65;color:var(--ink);cursor:pointer;
+    background:rgba(var(--stamp-rgb),0.08);border:1px solid rgba(var(--stamp-rgb),0.35);border-radius:8px;padding:10px 12px;
+  }
+  .share-check input{margin-top:3px;flex:none;}
+  .share-create:disabled{opacity:.45;cursor:not-allowed;filter:none;}
+  button.paywall-cta{border:none;cursor:pointer;}
+  .share-terms{font-size:11.5px;color:var(--muted);margin:10px 0 0;text-align:center;}
+  /* 圖上有用姓名查到的內容時的提醒：不擋分享，只是在查證勾選框前多講一次風險是什麼 */
+  .share-warn{
+    font-size:12.5px;font-weight:600;color:var(--ink);line-height:1.7;margin:0 0 14px;
+    background:rgba(var(--danger-rgb),0.08);border:1px solid rgba(var(--danger-rgb),0.35);border-radius:8px;padding:8px 12px;
+  }
+  .share-terms a, .share-options a{color:var(--current);}
+  .share-options{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;font-size:12px;color:var(--ink-soft);}
+  .share-options select{font:inherit;font-size:12px;margin-left:6px;color:var(--ink);background:var(--panel-tint);border:1px solid var(--line);border-radius:6px;padding:3px 6px;}
+
+  #myGraphsList{max-height:min(52vh,420px);overflow-y:auto;margin:0 -4px;}
+  .my-graph-item{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:10px 8px;border-bottom:1px solid var(--line);
+  }
+  .my-graph-item:last-child{border-bottom:none;}
+  .my-graph-item.withdrawn .my-report-name{color:var(--muted);text-decoration:line-through;}
+  .my-graph-text{min-width:0;}
+  .my-graph-text .my-report-date{white-space:normal;}
+  .my-graph-actions{display:flex;gap:6px;flex:none;}
+  .my-graph-actions .share-copy{padding:5px 9px;font-size:11.5px;}
+  @media (max-width:520px){
+    .my-graph-item{flex-direction:column;align-items:stretch;}
+    .my-graph-actions{justify-content:flex-end;}
+  }
+
+  .placeholder{color:var(--muted);font-size:13px;line-height:1.7;padding-right:20px;}
+
+  aside h2{font-family:'Space Grotesk',sans-serif;font-size:16px;margin:0 0 4px;padding-right:26px;color:var(--ink);}
+  .tag{
+    display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:10px;
+    letter-spacing:0.06em;text-transform:uppercase;padding:2px 7px;border-radius:0;margin-bottom:12px;
+  }
+  .tag.company{background:rgba(var(--kraft-line-rgb),0.16);color:var(--kraft-line);border:1px solid rgba(var(--kraft-line-rgb),0.4);}
+  .tag.person{background:rgba(var(--current-rgb),0.1);color:var(--current);border:1px solid rgba(var(--current-rgb),0.3);}
+  .tag.flag{background:rgba(var(--danger-rgb),0.14);color:var(--danger);border:1px solid rgba(var(--danger-rgb),0.4);margin-left:6px;}
+
+  /* 這顆按鈕對所有人都顯示，包含還沒訂閱的人。
+     以前是「沒訂閱就整顆藏起來」，結果是沒訂閱的人完全不知道有這個
+     功能存在——付費漏斗的第一步（知道它存在）等於永遠是 0。現在改成
+     「看得到、但按下去會先看到說明」：沒權限時按鈕多一個鎖頭圖示，
+     點擊不會打 API，而是開啟說明視窗。
+     （能不能真的生成仍然由伺服器端的 requireEntitlement 決定，
+     按鈕的可見性從來就不是安全邊界。） */
+  /* 顏色照全站自己定的規則走：琥珀色＝「這裡要花錢／要注意」（分享提示、
+     未登入帳號鈕、paywall CTA 都是這個邏輯，見 --stamp 附近的說明）。
+     這顆是全站唯一真正會收費的按鈕，原本卻沿用了「一般操作」的青色，
+     只靠一個 12px 的鎖頭圖示區分免費/付費——UIUX 顧問審查抓到的，
+     2026-09-27。還沒有權限時用琥珀色，已經訂閱、按下去不會再額外收費
+     之後，才切回跟其他一般操作一致的青色。 */
+  .report-trigger-btn{
+    display:inline-flex;align-items:center;gap:6px;
+    width:auto;margin:0 0 16px;padding:5px 12px;
+    background:rgba(var(--stamp-rgb),0.12);
+    border:1px solid rgba(var(--stamp-rgb),0.45);border-radius:0;
+    color:var(--stamp);font-size:11.5px;font-weight:600;
+    font-family:'IBM Plex Mono',monospace;letter-spacing:0.02em;cursor:pointer;
+    transition:background .15s ease,color .15s ease,border-color .15s ease;
+  }
+  .report-trigger-btn:hover{background:var(--stamp);border-color:var(--stamp);color:var(--paper);}
+  body.has-report-access .report-trigger-btn{
+    background:rgba(var(--current-rgb),0.1);
+    border-color:rgba(var(--current-rgb),0.35);
+    color:var(--current);
+  }
+  body.has-report-access .report-trigger-btn:hover{background:var(--current);border-color:var(--current);color:var(--paper);}
+  .report-trigger-btn svg{width:12px;height:12px;flex-shrink:0;stroke:currentColor;}
+  /* 鎖頭只在「還沒有權限」時出現：先講清楚這是付費功能，比讓人按下去
+     才發現不能用誠實，也篩掉一部分純好奇的點擊。 */
+  .report-trigger-btn .bmr-lock{display:inline-flex;}
+  body.has-report-access .report-trigger-btn .bmr-lock{display:none;}
+
+  /* 瑞士風格：欄位之間用細線切開，不用底色、圓角或陰影；對齊靠版面，不靠裝飾。
+     公司面板第一個欄位（統一編號）上方用一條粗線起頭，像年報的欄首。 */
+  .field{margin-bottom:0;padding:9px 0 10px;border-top:1px solid var(--line);}
+  .report-trigger-btn + .field{border-top:2px solid var(--ink);}
+  .field-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px;}
+  /* 統一編號是這間公司在資料庫裡唯一可靠的身分，字級放大成整個面板的視覺重心 */
+  .field-value.hero{font-size:26px;font-weight:700;letter-spacing:-0.01em;line-height:1.15;}
+  .field-label.list-label{margin-bottom:8px;} /* 標題後面接著一份名單/清單時，需要比一般欄位標籤更多的間距 */
+  .field-value{font-size:13px;font-family:'IBM Plex Mono',monospace;color:var(--ink);word-break:break-all;}
+  /* 兩處用到這個 class 的文字都是「資料侷限性」的免責聲明（法人資料的
+     異動記錄警語、人物節點的同名同姓警語），不是隨手一提的頁尾備註——
+     用 --ink-soft 不是 --muted，讀者比較可能真的看到它。 */
+  .footnote{font-size:11px;color:var(--ink-soft);line-height:1.6;}
+
+  /* 標題本身做成複製按鈕：原本這件事要另外點開「進階查詢」面板才找得到，
+     併回主要面板之後，複製的動作要放在最顯眼的名稱上，不能再多一層。
+     用 <button> 包住 <h2>，靠 all:unset 系列的重置讓瀏覽器預設的按鈕
+     外觀不冒出來，視覺上要跟一般的 h2 沒有兩樣，只是可以點。 */
+  .entity-title{
+    display:flex;align-items:center;gap:7px;width:100%;
+    background:none;border:none;padding:0;margin:0;cursor:pointer;
+    font:inherit;text-align:left;color:inherit;
+  }
+  .entity-title h2{flex:1;min-width:0;}
+  .entity-title svg{
+    width:14px;height:14px;flex:none;margin-bottom:4px;
+    color:var(--muted);opacity:.6;transition:color .15s ease, opacity .15s ease;
+  }
+  .entity-title:hover svg{color:var(--current);opacity:1;}
+  .entity-title.copied svg{color:var(--ok);opacity:1;}
+
+  .director-list{margin-top:16px;border-top:2px solid var(--ink);padding-top:12px;}
+  /* 職稱在左、姓名在右：像表格的第一欄是類別、第二欄是內容，同一欄的職稱靠左對齊成一條線 */
+  .director-row{
+    display:flex;align-items:baseline;gap:10px;
+    padding:8px 0 2px;font-size:13px;cursor:pointer;
+  }
+  .director-row .director-position{order:-1;flex:none;width:76px;text-align:left;}
+  .director-row .director-name{flex:1;min-width:0;}
+  .director-block{border-bottom:1px solid var(--line);}
+  /* 附註行（持股數、到職日、法人代表）縮排到姓名那一欄，跟上面的姓名對齊 */
+  .director-block .director-shares,.director-block .juristic-row{padding-left:86px;}
+  .director-block:last-child{border-bottom:none;}
+  .director-row:hover .director-name{color:var(--current);}
+  .director-position{color:var(--muted);font-size:11px;font-family:'IBM Plex Mono',monospace;}
+  .director-name{font-weight:500;color:var(--ink);}
+  .juristic-row{
+    font-size:11px;color:var(--kraft-line);cursor:pointer;padding:0 0 8px 4px;
+    font-family:'IBM Plex Mono',monospace;
+  }
+  .juristic-row:hover{text-decoration:underline;color:var(--current);}
+
+  /* ---------- 法人歷史紀錄（時間軸清單 + 單筆記錄切換） ---------- */
+  .history-toggle-btn{
+    display:block;width:100%;margin-top:14px;padding:9px 0;
+    background:var(--panel-tint);border:1px solid var(--line);border-radius:0;
+    color:var(--ink);font-size:12px;font-family:'Inter',sans-serif;cursor:pointer;
+    transition:border-color .15s ease, color .15s ease;
+  }
+  .history-toggle-btn:hover{border-color:var(--current-dim);color:var(--current);}
+  .history-back-btn{
+    display:inline-block;margin-bottom:12px;padding:0;
+    background:none;border:none;color:var(--muted);
+    font-size:12px;font-family:'IBM Plex Mono',monospace;cursor:pointer;
+  }
+  .history-back-btn:hover{color:var(--current);}
+  .history-timeline{border-top:1px solid var(--line);padding-top:6px;}
+  .history-list-item{
+    display:flex;flex-direction:column;gap:2px;
+    padding:10px 8px;margin:0 -8px;border-radius:7px;cursor:pointer;
+    border-bottom:1px dashed var(--line);
+  }
+  .history-list-item:last-child{border-bottom:none;}
+  .history-list-item:hover{background:var(--panel-tint);}
+  .history-date{font-size:12px;font-family:'IBM Plex Mono',monospace;color:var(--current);}
+  .history-reason{font-size:12px;color:var(--muted);}
+  .director-shares{
+    font-size:11px;color:var(--muted);padding:0 0 8px 4px;
+    font-family:'IBM Plex Mono',monospace;
+  }
+
+  .branch-list{margin-top:16px;border-top:1px solid var(--line);padding-top:14px;}
+  .branch-item{padding:6px 0;border-bottom:1px dashed var(--line);font-size:12px;color:var(--ink);}
+  .branch-item:last-child{border-bottom:none;}
+  .branch-no{font-family:'IBM Plex Mono',monospace;color:var(--muted);margin-left:6px;}
+  .branch-meta{font-size:11px;color:var(--muted);margin-top:2px;}
+
+  .ext-link{
+    display:inline-block;font-size:12px;color:var(--current);text-decoration:none;
+    border:1px solid var(--line);background:var(--panel-tint);
+    padding:7px 11px;border-radius:0;font-weight:500;
+    cursor:pointer; /* 這個類別除了 <a> 也被用在 <button id="toggleGroupBtn"> 上，button 預設不會有手指游標 */
+  }
+  .ext-link:hover{border-color:var(--current);}
+  .ext-note{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.6;}
+  .ext-note.flash{color:var(--current);}
+  .help-tip{font-size:12px;color:var(--ink);line-height:1.7;margin-bottom:8px;}
+  .help-tip:last-child{margin-bottom:0;}
+  .help-tip b{color:var(--current);font-weight:600;}
+
+  .ext-btn-group{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;}
+  .ext-btn{
+    font-size:11px;color:var(--ink-soft);background:var(--panel-tint);
+    border:1px solid var(--line);border-radius:6px;padding:6px 9px;cursor:pointer;
+    font-family:'Inter',sans-serif;
+  }
+  .ext-btn:hover{border-color:var(--current);color:var(--current);}
+
+  .penalty-section{margin-top:16px;border-top:1px solid var(--line);padding-top:14px;}
+
+  .penalty-item{padding:8px 0;border-bottom:1px dashed var(--line);}
+  .penalty-item:last-child{border-bottom:none;}
+  .penalty-case{font-size:13px;font-weight:500;color:var(--danger);}
+  .penalty-fact{font-size:12px;color:var(--ink);margin-top:2px;line-height:1.5;}
+  .penalty-meta{font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;margin-top:3px;}
+
+  @media (max-width:640px){
+    .toolbar{left:12px;right:12px;top:12px;flex-wrap:wrap;row-gap:8px;}
+    .search-wrapper{flex:1 1 100%;order:1;min-width:0;}
+    /* flex 子項目預設 min-width:auto，內容撐多寬容器就得多寬，才會在窄螢幕
+       被推出畫面外（法人選項文字較長時最明顯）。input 拿掉這個限制負責被
+       擠壓，select 給一個上限防止長選項文字把整排撐爆，按鈕固定不擠壓，
+       維持可點擊的大小。 */
+    .search-box{min-width:0;}
+    .search-box select{flex-shrink:0;min-width:0;max-width:88px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap;}
+    .search-box input{width:auto;flex:1;min-width:0;}
+    .search-box button, .search-box .clear-input-btn{flex-shrink:0;}
+    .icon-btn{order:2;}
+    .export-wrapper{order:2;}
+    .account-wrapper{order:2;}
+    .adv-panel{left:12px;right:12px;width:auto;}
+    /* 原本用 top:auto + bottom:12px + height:65vh，等於面板高度固定
+       算死、位置完全不管工具列實際多高——工具列比較矮的時候（例如
+       只有一行搜尋框），面板上緣跟工具列下緣之間就會空出一大段，
+       中間露出後面的圖，看起來像排版壞掉。改成跟 .adv-panel 同一招：
+       上緣貼著 --panel-top（工具列實際底邊，用 ResizeObserver 量出來），
+       下緣貼 12px，高度自然算出來，工具列多高面板就跟著從哪裡開始，
+       不會再露出中間那段空白。 */
+    /* max-width 沿用桌機那條 calc(100vw - 40px)，跟這裡的 left/right:12px
+       疊在一起算，變成兩層各自獨立的寬度限制打架——視窗夠窄時右邊會
+       多出一截留白、面板沒有真的貼齊 right:12px。手機版重設成 none，
+       單純讓 left/right 各自的 12px 決定寬度就好。 */
+    .detail-panel{left:12px;right:12px;width:auto;max-width:none;top:var(--panel-top, 78px);bottom:12px;height:auto;}
+  }
+
+/* ---------------------------------------------------------
+   Supabase BaaS 連線狀態指示鈕
+--------------------------------------------------------- */
+.conn-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.conn-pill .status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.conn-pill.connected .status-dot {
+  background: var(--ok);
+  box-shadow: 0 0 8px rgba(79, 191, 139, 0.7);
+}
+.conn-pill.local .status-dot {
+  background: var(--stamp);
+}

@@ -1,0 +1,19 @@
+﻿{
+  "name": "UNDERCURRENT — 暗流，暗彰表面之下的公司關係",
+  "short_name": "UNDERCURRENT",
+  "description": "公司與人物關聯圖查詢工具：追蹤董監事、經理人與企業之間的關聯網絡",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#050B14",
+  "theme_color": "#050B14",
+  "lang": "zh-Hant",
+  "orientation": "any",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
