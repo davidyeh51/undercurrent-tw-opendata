@@ -437,18 +437,46 @@ INSERT INTO public.directors (ubn, company_name, position, person_name, represen
 ('16670878', '國泰金融控股股份有限公司', '董事', '李長庚', '', 3200000, 3)
 ON CONFLICT DO NOTHING;
 
--- 8. 進金生能源服務 (84149807)
+-- 8. 進金生能源服務股份有限公司 (24758118) - 官方經濟部商工登記資料
 INSERT INTO public.companies (ubn, company_name, company_status_desc, capital_stock_amount, paid_in_capital_amount, responsible_name, company_location, register_organization_desc, company_setup_date, change_of_approval_data)
-VALUES ('84149807', '進金生能源服務股份有限公司', '核准設立', 1000000000, 715000000, '厲燕蒙', '台北市內湖區行善路397號6樓', '經濟部商業發展署', '1000812', '1130910')
+VALUES ('24758118', '進金生能源服務股份有限公司', '核准設立', 3000000000, 588438900, '陳加屏', '臺北市內湖區新湖二路257號6樓', '商業發展署', '1031016', '1150407')
+ON CONFLICT (ubn) DO UPDATE SET 
+  company_name = EXCLUDED.company_name,
+  capital_stock_amount = EXCLUDED.capital_stock_amount,
+  paid_in_capital_amount = EXCLUDED.paid_in_capital_amount,
+  responsible_name = EXCLUDED.responsible_name,
+  company_location = EXCLUDED.company_location,
+  updated_at = NOW();
+
+-- 關聯母公司：進金生實業股份有限公司 (89206602)
+INSERT INTO public.companies (ubn, company_name, company_status_desc, capital_stock_amount, paid_in_capital_amount, responsible_name, company_location, register_organization_desc, company_setup_date, change_of_approval_data)
+VALUES ('89206602', '進金生實業股份有限公司', '核准設立', 800000000, 534864500, '黃舉昇', '臺北市內湖區新湖二路257號5樓之3', '商業發展署(南投辦公區)', '0830718', '1140715')
 ON CONFLICT (ubn) DO UPDATE SET updated_at = NOW();
 
+-- 進金生能源服務 全體董監事
 INSERT INTO public.directors (ubn, company_name, position, person_name, represents, shares, rank) VALUES
-('84149807', '進金生能源服務股份有限公司', '董事長', '厲燕蒙', '進金生實業股份有限公司', 28500000, 1),
-('84149807', '進金生能源服務股份有限公司', '董事', '黃顯川', '', 1200000, 2)
+('24758118', '進金生能源服務股份有限公司', '董事長', '陳加屏', '進金生實業股份有限公司', 28473081, 1),
+('24758118', '進金生能源服務股份有限公司', '董事', '黃舉昇', '進金生實業股份有限公司', 28473081, 2),
+('24758118', '進金生能源服務股份有限公司', '董事', '厲國欽', '進金生實業股份有限公司', 28473081, 3),
+('24758118', '進金生能源服務股份有限公司', '董事', '葉興松', '進金生實業股份有限公司', 28473081, 4),
+('24758118', '進金生能源服務股份有限公司', '董事', '李傳來', '', 41360, 5),
+('24758118', '進金生能源服務股份有限公司', '獨立董事', '劉祥泰', '', 0, 6),
+('24758118', '進金生能源服務股份有限公司', '獨立董事', '李禮仲', '', 0, 7),
+('24758118', '進金生能源服務股份有限公司', '獨立董事', '白幸卉', '', 0, 8),
+('24758118', '進金生能源服務股份有限公司', '獨立董事', '吳宏一', '', 0, 9)
 ON CONFLICT DO NOTHING;
 
+-- 進金生實業 董監事
+INSERT INTO public.directors (ubn, company_name, position, person_name, represents, shares, rank) VALUES
+('89206602', '進金生實業股份有限公司', '董事長', '黃舉昇', '', 2453946, 1),
+('89206602', '進金生實業股份有限公司', '董事', '許心如', '', 319839, 2),
+('89206602', '進金生實業股份有限公司', '董事', '黃凡', '', 396420, 3),
+('89206602', '進金生實業股份有限公司', '監察人', '周昌盛', '', 360000, 4)
+ON CONFLICT DO NOTHING;
+
+-- 進金生能源服務 經理人
 INSERT INTO public.managers (ubn, company_name, manager_name, position, start_date, rank) VALUES
-('84149807', '進金生能源服務股份有限公司', '黃顯川', '總經理', '1000812', 1)
+('24758118', '進金生能源服務股份有限公司', '厲國欽', '總經理', '1031016', 1)
 ON CONFLICT DO NOTHING;
 
 -- 植入示範法人基金會 (Foundations)
