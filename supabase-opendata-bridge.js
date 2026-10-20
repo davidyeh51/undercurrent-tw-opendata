@@ -620,7 +620,10 @@
           };
         }
       } else if (type === 'company') {
-        const comp = LOCAL_SEED_DATABASE.companies.find(c => c.company_name.includes(query));
+        let comp = LOCAL_SEED_DATABASE.companies.find(c => c.company_name === query || c.ubn === query);
+        if (!comp) {
+          comp = LOCAL_SEED_DATABASE.companies.find(c => c.company_name.includes(query));
+        }
         if (comp) {
           const allComps = [comp];
           // 如果有法人代表關聯母公司，一起帶出
@@ -639,8 +642,8 @@
           };
         }
       } else if (type === 'person') {
-        const matchedDirs = LOCAL_SEED_DATABASE.directors.filter(d => d.person_name === query);
-        const matchedMans = LOCAL_SEED_DATABASE.managers.filter(m => m.manager_name === query);
+        const matchedDirs = LOCAL_SEED_DATABASE.directors.filter(d => d.person_name === query || (query.length >= 2 && d.person_name.includes(query)));
+        const matchedMans = LOCAL_SEED_DATABASE.managers.filter(m => m.manager_name === query || (query.length >= 2 && m.manager_name.includes(query)));
         const ubns = [...new Set([...matchedDirs.map(d => d.ubn), ...matchedMans.map(m => m.ubn)])];
         if (ubns.length > 0) {
           const comps = LOCAL_SEED_DATABASE.companies.filter(c => ubns.includes(c.ubn));
@@ -704,16 +707,21 @@
 
       // 本地示範補全
       const suggestions = [];
-      if (type === 'company') {
+      if (type === 'company' || type === 'ubn') {
         LOCAL_SEED_DATABASE.companies.forEach(c => {
-          if (c.company_name.includes(query) && !suggestions.includes(c.company_name)) {
+          if ((c.company_name.includes(query) || c.ubn.includes(query)) && !suggestions.includes(c.company_name)) {
             suggestions.push(c.company_name);
           }
         });
       } else if (type === 'person') {
         LOCAL_SEED_DATABASE.directors.forEach(d => {
-          if (d.person_name.includes(query) && !suggestions.includes(d.person_name)) {
+          if (d.person_name && d.person_name.includes(query) && !suggestions.includes(d.person_name)) {
             suggestions.push(d.person_name);
+          }
+        });
+        LOCAL_SEED_DATABASE.managers.forEach(m => {
+          if (m.manager_name && m.manager_name.includes(query) && !suggestions.includes(m.manager_name)) {
+            suggestions.push(m.manager_name);
           }
         });
       } else if (type === 'foundation') {

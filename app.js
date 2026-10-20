@@ -1167,6 +1167,53 @@ function buildUrl(endpointId, filter, top){
 }
 
 async function fetchJson(url, timeoutMs){
+  // 1. 若處於靜態託管（如 GitHub Pages），由 SupabaseBridge 統一接管後端 API 端點
+  if(window.SupabaseBridge && typeof url === 'string'){
+    try {
+      const u = new URL(url, location.origin);
+      const pathname = u.pathname;
+
+      if(pathname.includes('/api/gcis')){
+        const endpoint = u.searchParams.get('endpoint');
+        const filter = u.searchParams.get('filter');
+        const top = parseInt(u.searchParams.get('top') || '50', 10);
+        const res = await window.SupabaseBridge.callGcisApi(endpoint, filter, top);
+        if(Array.isArray(res)) return res;
+      }
+      if(pathname.includes('/api/d1-expand')){
+        const q = u.searchParams.get('q');
+        const type = u.searchParams.get('type') || 'person';
+        const bundle = await window.SupabaseBridge.expandEntity(q, type);
+        if(bundle && ((bundle.companies && bundle.companies.length > 0) || (bundle.directors && bundle.directors.length > 0))){
+          return bundle;
+        }
+      }
+      if(pathname.includes('/api/d1-suggest')){
+        const q = u.searchParams.get('q');
+        const type = u.searchParams.get('type') || 'company';
+        const suggestions = await window.SupabaseBridge.getSuggestions(q, type);
+        return { suggestions: suggestions || [] };
+      }
+      if(pathname.includes('/api/foundation-expand')){
+        const q = u.searchParams.get('q');
+        const foundations = await window.SupabaseBridge.getFoundationBundle(q);
+        return { foundations: foundations || [] };
+      }
+      if(pathname.includes('/api/foundation-suggest')){
+        const q = u.searchParams.get('q');
+        const suggestions = await window.SupabaseBridge.getSuggestions(q, 'foundation');
+        return { suggestions: suggestions || [] };
+      }
+      if(pathname.includes('/api/env-penalty')){
+        const q = u.searchParams.get('q');
+        const penaltyRes = await window.SupabaseBridge.getEnvPenalty(q);
+        return penaltyRes || { records: [], scanned: 0 };
+      }
+    } catch(bridgeErr){
+      console.warn('[app.js] SupabaseBridge API interception warning:', bridgeErr);
+    }
+  }
+
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), timeoutMs || 8000);
   try{
@@ -2140,18 +2187,70 @@ async function expandFromCompanySearch(query, type){
   setStatus(`查詢中：${query}…`, 'loading', false);
   try{
     const bundle = await getExpandBundleFromD1(query, type);
-    if(bundle.companies.length > 0){
+    if(bundle && bundle.companies && bundle.companies.length > 0){
       buildGraphFromD1Company(bundle);
-      setStatus(`完成（自己的資料庫）：「${query}」共 ${bundle.companies.length} 家公司`, 'ok', true);
+      setStatus(`完成（資料庫與政府開放資料）：「${query}」共 ${bundle.companies.length} 家公司`, 'ok', true);
       flashShareHint();
       const firstUbn = bundle.companies[0].ubn;
       focusNodeSafe(companyNodeId(firstUbn), { scale: 1.0, animation: true });
       return;
     }
-    setStatus(`查無「${query}」的公司資料`, 'err', true);
+    // 官方 OpenData 備援：若一般查詢未找到，嘗試透過 GCIS 登記解析
+    await expandFromCompanyViaGcis(query, type);
   } catch(err){
     console.error(err);
     setStatus(`查詢失敗：${err.message}`, 'err', true);
+  }
+}
+
+async function expandFromCompanyViaGcis(query, type){
+  setStatus(`查詢中（官方商工登記資料）：${query}…`, 'loading', false);
+  try{
+    let ubn = query;
+    let compName = query;
+    if(type !== 'ubn' && !/^\d{8}$/.test(query)){
+      const resolved = await resolveCompanyByName(query);
+      if(!resolved){
+        setStatus(`查無「${query}」的公司登記資料`, 'err', true);
+        return;
+      }
+      ubn = resolved.ubn;
+      compName = resolved.name;
+    }
+    const full = await getCompanyFull(ubn, compName);
+    if(!full || (!full.name && !full.capital)){
+      setStatus(`查無「${query}」的公司登記資料`, 'err', true);
+      return;
+    }
+    const bundle = {
+      centerType: 'company',
+      companies: [{
+        ubn: ubn,
+        company_name: full.name || compName,
+        capital_stock_amount: full.capital || 0,
+        paid_in_capital_amount: full.capital || 0,
+        company_location: full.address || '',
+        company_setup_date: full.setupDate || '',
+        company_status_desc: full.status || '核准設立',
+        level: 1
+      }],
+      directors: (full.directors || []).map(d => ({
+        ubn: ubn,
+        company_name: full.name || compName,
+        position: d.position || '董事',
+        person_name: d.name,
+        represents: d.juristic || '',
+        shares: String(d.shareholding || 0)
+      })),
+      managers: []
+    };
+    buildGraphFromD1Company(bundle);
+    setStatus(`完成（官方商工登記開放資料）：「${compName}」`, 'ok', true);
+    flashShareHint();
+    focusNodeSafe(companyNodeId(ubn), { scale: 1.0, animation: true });
+  } catch(e){
+    console.error('[expandFromCompanyViaGcis] error:', e);
+    setStatus(`查詢失敗：${e.message}`, 'err', true);
   }
 }
 
